@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Search Compare — Angel One vs Groww</title>
+<meta name="description" content="Compare search results for a keyword across Angel One and Groww side by side.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="runner.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">▲</span>
+    <span class="brand-name">Search Compare</span>
+    <span class="brand-sub">Angel One · Groww</span>
+  </div>
+  <form class="searchbox" id="search-form">
+    <span class="prompt">&gt;</span>
+    <input id="kws" placeholder="Search keywords, comma separated — e.g. nifty, sens, gold" autocomplete="off" spellcheck="false">
+    <kbd>Enter</kbd>
+  </form>
+  <div class="status" id="backend"><span class="dot"></span><span class="status-text">checking</span></div>
+</header>
+
+<nav class="tabs">
+  <span class="tabs-label">Compare</span>
+  <div class="chips" id="chips">
+    <button class="chip active" data-b="all" id="chip-all">Both</button>
+    <button class="chip" data-b="angelone" id="chip-angelone">Angel One</button>
+    <button class="chip" data-b="groww" id="chip-groww">Groww</button>
+  </div>
+  <div class="spacer"></div>
+  <button class="btn primary" id="go">Run search</button>
+  <button class="btn" id="clear">Clear</button>
+</nav>
+
+<main>
+  <section class="info-row">
+    <div class="info" id="info-angelone">
+      <span class="tag tag-blue">AO</span>
+      <div><div class="info-title">Angel One</div>
+        <div class="info-sub">Official SmartAPI search via local backend</div></div>
+    </div>
+    <div class="info" id="info-groww">
+      <span class="tag tag-green">GW</span>
+      <div><div class="info-title">Groww</div>
+        <div class="info-sub mono" id="groww-url"></div></div>
+    </div>
+  </section>
+
+  <section class="console" id="console">
+    <div class="console-head">
+      <span>console</span>
+      <span class="console-hint">python run.py must be running</span>
+    </div>
+    <pre id="log"><span class="muted">ready.</span></pre>
+  </section>
+
+  <section id="results"></section>
+</main>
+<script src="runner.js"></script>
+</body>
+</html>
