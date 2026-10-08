@@ -1,23 +1,30 @@
-"""Backend for the Broker Capture extension (no UI of its own).
+"""Backend + dashboard server.
 
-- Angel One: calls Angel One's official SmartAPI search (credentials in .env).
-- Groww: stores/serves snapshots the extension captured from groww.in.
+- Serves the dashboard (web/) at http://127.0.0.1:8000
+- Angel One: official SmartAPI search (credentials in .env)
+- Groww: groww.in's public JSON search endpoint; last result is saved as a fallback
 """
-from typing import List
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Response
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from services import angelone, groww, snapshots
 from services.common import strip_internal_fields
 
-app = FastAPI(title="Broker Capture Backend")
+app = FastAPI(title="Search Compare")
 BROKERS = ("angelone", "groww")
 
 
 @app.get("/")
+def home():
+    return RedirectResponse("/ui/runner.html")
+
+
+@app.get("/api/health")
 def status():
-    return {"ok": True, "message": "Backend running. Use the Broker Capture extension."}
+    return {"ok": True}
 
 
 def _lookup(name, keyword):
@@ -25,11 +32,17 @@ def _lookup(name, keyword):
         if name == "angelone":
             rows, src = angelone.search(keyword)
             return {"source": src, "rows": [strip_internal_fields(r) for r in rows]}
+        try:
+            live = groww.search(keyword)
+            if live:
+                snapshots.save_snapshot("groww", keyword, live)
+                return {"source": "live", "rows": live}
+        except Exception:
+            pass
         snap = snapshots.get_latest_snapshot("groww", keyword)
         if snap:
             return {"source": "captured", "captured_at": snap["captured_at"], "rows": snap["rows"]}
-        rows = groww.search(keyword)
-        return {"source": "fallback", "rows": [strip_internal_fields(r) for r in rows]}
+        return {"source": "error", "error": "Groww search unreachable and no saved result", "rows": []}
     except Exception as e:
         return {"source": "error", "error": str(e), "rows": []}
 
@@ -42,26 +55,4 @@ def search(keyword: str):
     return {"keyword": keyword, **{b: _lookup(b, keyword) for b in BROKERS}}
 
 
-class SnapshotIn(BaseModel):
-    broker: str
-    keyword: str
-    rows: List[dict]
-
-
-CORS = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "*"}
-
-
-@app.options("/api/snapshot")
-def snapshot_preflight():
-    return Response(status_code=204, headers=CORS)
-
-
-@app.post("/api/snapshot")
-def save_snapshot(body: SnapshotIn, response: Response):
-    for k, v in CORS.items():  # CORS open on this route only (localhost-bound server)
-        response.headers[k] = v
-    if body.broker.lower() != "groww":
-        raise HTTPException(400, "only groww snapshots are supported")
-    ts = snapshots.save_snapshot("groww", body.keyword, body.rows)
-    return {"ok": True, "captured_at": ts, "count": len(body.rows)}
+app.mount("/ui", StaticFiles(directory=str(Path(__file__).parent / "web")), name="ui")
